@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+import math
 """
 This demo demonstrates how to draw a dynamic mpl (matplotlib) 
 plot in a wxPython application.
@@ -22,6 +24,7 @@ import pprint
 import random
 import sys
 import wx
+import serial
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -117,8 +120,9 @@ class GraphFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, -1, self.title)
         
-        self.datagen = DataGen()
-        self.data = [self.datagen.next()]
+        self.sensordata = []
+        for i in xrange(22):
+            self.sensordata.append([])
         self.paused = False
         
         self.create_menu()
@@ -127,7 +131,7 @@ class GraphFrame(wx.Frame):
         
         self.redraw_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)        
-        self.redraw_timer.Start(50)
+        self.redraw_timer.Start(100)
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -208,11 +212,18 @@ class GraphFrame(wx.Frame):
         # plot the data as a line series, and save the reference 
         # to the plotted line series
         #
-        self.plot_data = self.axes.plot(
-            self.data, 
+        n = 22.0
+        frequency = math.pi/6
+        self.plots = []
+        for i in xrange(n):
+            r = math.sin(frequency*i)*127 + 128
+            g = math.sin(frequency*i + math.pi*2/3)*127 + 128
+            b = math.sin(frequency*i + math.pi*4/3)*127 + 128
+            self.plots.append(self.axes.plot(
+            self.sensordata[i], 
             linewidth=1,
-            color=(1, 1, 0),
-            )[0]
+            color=(r/255.0, g/255.0, b/255.0),
+            )[0])
 
     def draw_plot(self):
         """ Redraws the plot
@@ -222,7 +233,7 @@ class GraphFrame(wx.Frame):
         # xmax.
         #
         if self.xmax_control.is_auto():
-            xmax = len(self.data) if len(self.data) > 50 else 50
+            xmax = len(self.sensordata[0]) if len(self.sensordata[0]) > 50 else 50
         else:
             xmax = int(self.xmax_control.manual_value())
             
@@ -239,12 +250,12 @@ class GraphFrame(wx.Frame):
         # the whole data set.
         # 
         if self.ymin_control.is_auto():
-            ymin = round(min(self.data), 0) - 1
+            ymin = round(min((map(min, self.sensordata))), 0) - 1
         else:
             ymin = int(self.ymin_control.manual_value())
         
         if self.ymax_control.is_auto():
-            ymax = round(max(self.data), 0) + 1
+            ymax = round(max(map(max, self.sensordata)), 0) + 1
         else:
             ymax = int(self.ymax_control.manual_value())
 
@@ -268,9 +279,9 @@ class GraphFrame(wx.Frame):
         pylab.setp(self.axes.get_xticklabels(), 
             visible=self.cb_xlab.IsChecked())
         
-        self.plot_data.set_xdata(np.arange(len(self.data)))
-        self.plot_data.set_ydata(np.array(self.data))
-        
+        for i in xrange(22):
+            self.plots[i].set_xdata(np.arange(len(self.sensordata[i])))
+            self.plots[i].set_ydata(np.array(self.sensordata[i]))            
         self.canvas.draw()
     
     def on_pause_button(self, event):
@@ -306,11 +317,15 @@ class GraphFrame(wx.Frame):
         # if paused do not add data, but still redraw the plot
         # (to respond to scale modifications, grid change, etc.)
         #
-        if not self.paused:
-            self.data.append(self.datagen.next())
+        #if not self.paused:
+        #    self.data.append(self.datagen.next())
         
         self.draw_plot()
-    
+        
+    def append_data(self, ps):
+        for i in xrange(22):
+            self.sensordata[i].append(ps.l_finger_tip[i])
+        
     def on_exit(self, event):
         self.Destroy()
     
