@@ -120,17 +120,17 @@ class GraphFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, -1, self.title)
         
-        self.sensordata = []
-        for i in xrange(22):
-            self.sensordata.append([])
         self.paused = False
         
         self.create_menu()
         self.create_status_bar()
         self.create_main_panel()
         
+        self.datagen = DataGen()
+        
         self.redraw_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)        
+
         self.redraw_timer.Start(100)
 
     def create_menu(self):
@@ -212,19 +212,20 @@ class GraphFrame(wx.Frame):
         # plot the data as a line series, and save the reference 
         # to the plotted line series
         #
-        n = 22.0
-        frequency = math.pi/6
-        self.plots = []
-        for i in xrange(n):
-            r = math.sin(frequency*i)*127 + 128
-            g = math.sin(frequency*i + math.pi*2/3)*127 + 128
-            b = math.sin(frequency*i + math.pi*4/3)*127 + 128
-            self.plots.append(self.axes.plot(
-            self.sensordata[i], 
+        self.plots = {}
+        self.data = {}
+        
+    def plot_value(self, key, value, r=255.0, g=255.0, b=0.0):
+        if not self.data.has_key(key):
+            self.data[key] = [value]
+            self.plots[key] = (self.axes.plot(
+            self.data[key], 
             linewidth=1,
             color=(r/255.0, g/255.0, b/255.0),
             )[0])
-
+        else:
+          self.data[key].append(value)
+        
     def draw_plot(self):
         """ Redraws the plot
         """
@@ -233,7 +234,7 @@ class GraphFrame(wx.Frame):
         # xmax.
         #
         if self.xmax_control.is_auto():
-            xmax = len(self.sensordata[0]) if len(self.sensordata[0]) > 50 else 50
+            xmax = max(50, max([len(x) for x in self.data.values()])) if self.data.keys() else 50
         else:
             xmax = int(self.xmax_control.manual_value())
             
@@ -250,12 +251,12 @@ class GraphFrame(wx.Frame):
         # the whole data set.
         # 
         if self.ymin_control.is_auto():
-            ymin = round(min((map(min, self.sensordata))), 0) - 1
+            ymin = round(min((map(min, self.data.values()))), 0) - 1
         else:
             ymin = int(self.ymin_control.manual_value())
         
         if self.ymax_control.is_auto():
-            ymax = round(max(map(max, self.sensordata)), 0) + 1
+            ymax = round(max(map(max, self.data.values())), 0) + 1
         else:
             ymax = int(self.ymax_control.manual_value())
 
@@ -279,9 +280,9 @@ class GraphFrame(wx.Frame):
         pylab.setp(self.axes.get_xticklabels(), 
             visible=self.cb_xlab.IsChecked())
         
-        for i in xrange(22):
-            self.plots[i].set_xdata(np.arange(len(self.sensordata[i])))
-            self.plots[i].set_ydata(np.array(self.sensordata[i]))            
+        for key in self.data.keys():
+            self.plots[key].set_xdata(np.arange(len(self.data[key])))
+            self.plots[key].set_ydata(np.array(self.data[key]))            
         self.canvas.draw()
     
     def on_pause_button(self, event):
@@ -319,12 +320,10 @@ class GraphFrame(wx.Frame):
         #
         #if not self.paused:
         #    self.data.append(self.datagen.next())
-        
+        r = self.datagen.next()
+        self.plot_value('random', r)
+        print r
         self.draw_plot()
-        
-    def append_data(self, ps):
-        for i in xrange(22):
-            self.sensordata[i].append(ps.l_finger_tip[i])
         
     def on_exit(self, event):
         self.Destroy()
