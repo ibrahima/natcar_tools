@@ -129,9 +129,11 @@ class GraphFrame(wx.Frame):
         self.datagen = DataGen()
         
         self.redraw_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)        
+        self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)
 
         self.redraw_timer.Start(100)
+        
+        self.timer_callbacks = []
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -326,6 +328,8 @@ class GraphFrame(wx.Frame):
         self.plot_value('random', r)
         k = self.datagen.next()
         self.plot_value('random2', k+3)
+        for cb in self.timer_callbacks:
+            cb()
         self.draw_plot()
         
     def on_exit(self, event):
@@ -344,18 +348,28 @@ class GraphFrame(wx.Frame):
     def on_flash_status_off(self, event):
         self.statusbar.SetStatusText('')
 
+    def register_callback(self, cb):
+        self.timer_callbacks.append(cb)
     
 class SerialPlotter(object):
     def __init__(self, frame, port=6, baud=38400):
         self.frame = frame
         self.ser = serial.Serial(port, baud, timeout=1)
+        TIMER_ID = 123
+        self.timer = wx.Timer(frame, TIMER_ID)
+        self.timer.Start(10)
+        wx.EVT_TIMER(frame, TIMER_ID, self.time)
 
+    def time(self, event):
+        self.read_line()
+    
     def parse_line(self, s):
         l = [tuple(entry.split(":")) for entry in s.split(",")]
         for k, v in l:
             self.frame.plot_value(k, int(v))
 
     def close_port(self):
+        print 'Closing port'
         self.ser.close()
         
     def open_port(self):
@@ -363,6 +377,7 @@ class SerialPlotter(object):
     
     def read_line(self):
       s = self.ser.readline()
+      print s
       self.parse_line(s)
 
 if __name__ == '__main__':
