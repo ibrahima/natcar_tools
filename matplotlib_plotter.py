@@ -37,7 +37,7 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 import numpy as np
 import pylab
-
+from matplotlib.pyplot import legend
 
 class DataGen(object):
     """ A silly class that generates pseudo-random data for
@@ -222,7 +222,8 @@ class GraphFrame(wx.Frame):
             self.data[key], 
             linewidth=1,
             color=(r/255.0, g/255.0, b/255.0),
-            )[0])
+            label=str(key))[0])
+            legend()
         else:
           self.data[key].append(value)
         
@@ -283,6 +284,7 @@ class GraphFrame(wx.Frame):
         for key in self.data.keys():
             self.plots[key].set_xdata(np.arange(len(self.data[key])))
             self.plots[key].set_ydata(np.array(self.data[key]))            
+        legend()
         self.canvas.draw()
     
     def on_pause_button(self, event):
@@ -322,10 +324,12 @@ class GraphFrame(wx.Frame):
         #    self.data.append(self.datagen.next())
         r = self.datagen.next()
         self.plot_value('random', r)
-        print r
+        k = self.datagen.next()
+        self.plot_value('random2', k+3)
         self.draw_plot()
         
     def on_exit(self, event):
+        
         self.Destroy()
     
     def flash_status_message(self, msg, flash_len_ms=1500):
@@ -340,9 +344,31 @@ class GraphFrame(wx.Frame):
     def on_flash_status_off(self, event):
         self.statusbar.SetStatusText('')
 
+    
+class SerialPlotter(object):
+    def __init__(self, frame, port=6, baud=38400):
+        self.frame = frame
+        self.ser = serial.Serial(port, baud, timeout=1)
+
+    def parse_line(self, s):
+        l = [tuple(entry.split(":")) for entry in s.split(",")]
+        for k, v in l:
+            self.frame.plot_value(k, int(v))
+
+    def close_port(self):
+        self.ser.close()
+        
+    def open_port(self):
+        self.ser.open()
+    
+    def read_line(self):
+      s = self.ser.readline()
+      self.parse_line(s)
 
 if __name__ == '__main__':
     app = wx.PySimpleApp()
     app.frame = GraphFrame()
+    sp = SerialPlotter(app.frame, 6, 38400)
     app.frame.Show()
     app.MainLoop()
+    sp.close_port()
