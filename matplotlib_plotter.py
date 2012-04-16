@@ -26,6 +26,7 @@ import sys
 import wx
 import serial
 from datetime import datetime # Yeah, screw you too Python
+import argparse
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -372,7 +373,7 @@ class RandomPlotter(object):
 class SerialPlotter(object):
     def __init__(self, frame, port=6, baud=38400):
         self.frame = frame
-        #self.ser = serial.Serial(port, baud, timeout=1)
+        self.ser = serial.Serial(port, baud, timeout=1)
         TIMER_ID = 123
         self.timer = wx.Timer(frame, TIMER_ID)
         self.timer.Start(1)
@@ -397,12 +398,23 @@ class SerialPlotter(object):
       s = self.ser.readline()
       print s
       self.parse_line(s)
+      
+def parse_args():
+    parser = argparse.ArgumentParser(description='Plot values taken from serial input.')
+    parser.add_argument('-t', '--test', action='store_true')
+    return parser.parse_args()
 
 if __name__ == '__main__':
+    args = parse_args()
+    
     app = wx.PySimpleApp()
     app.frame = GraphFrame()
-    #sp = SerialPlotter(app.frame, 6, 38400)
-    rp = RandomPlotter(app.frame)
+    if args.test:
+        rp = RandomPlotter(app.frame)
+    else:
+        sp = SerialPlotter(app.frame, 6, 38400)
+    
     app.frame.Show()
     app.MainLoop()
-    #sp.close_port()
+    if not args.test:
+        sp.close_port()
