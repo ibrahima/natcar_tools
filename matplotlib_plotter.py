@@ -25,6 +25,7 @@ import random
 import sys
 import wx
 import serial
+from datetime import datetime # Yeah, screw you too Python
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -134,6 +135,7 @@ class GraphFrame(wx.Frame):
         self.redraw_timer.Start(100)
         
         self.timer_callbacks = []
+        self.Bind(wx.EVT_CLOSE, self.on_exit)
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -237,7 +239,7 @@ class GraphFrame(wx.Frame):
         # xmax.
         #
         if self.xmax_control.is_auto():
-            xmax = max(50, max([len(x) for x in self.data.values()])) if self.data.keys() else 50
+            xmax = max(50, max([len(x.get_xdata()) for x in self.plots.values()])) if self.data.keys() else 50
         else:
             xmax = int(self.xmax_control.manual_value())
             
@@ -253,13 +255,14 @@ class GraphFrame(wx.Frame):
         # minimal/maximal value in the current display, and not
         # the whole data set.
         # 
+        ydata =[x.get_ydata() for x in self.plots.values()]
         if self.ymin_control.is_auto():
-            ymin = round(min((map(min, self.data.values()))), 0) - 1
+            ymin = round(min((map(min, ydata))), 0) - 1
         else:
             ymin = int(self.ymin_control.manual_value())
         
         if self.ymax_control.is_auto():
-            ymax = round(max(map(max, self.data.values())), 0) + 1
+            ymax = round(max(map(max, ydata)), 0) + 1
         else:
             ymax = int(self.ymax_control.manual_value())
 
@@ -283,9 +286,10 @@ class GraphFrame(wx.Frame):
         pylab.setp(self.axes.get_xticklabels(), 
             visible=self.cb_xlab.IsChecked())
         
-        for key in self.data.keys():
-            self.plots[key].set_xdata(np.arange(len(self.data[key])))
-            self.plots[key].set_ydata(np.array(self.data[key]))            
+        if not self.paused: # Don't update graph if paused.
+          for key in self.data.keys():
+              self.plots[key].set_xdata(np.arange(len(self.data[key])))
+              self.plots[key].set_ydata(np.array(self.data[key]))            
         legend()
         self.canvas.draw()
     
@@ -321,19 +325,21 @@ class GraphFrame(wx.Frame):
     def on_redraw_timer(self, event):
         # if paused do not add data, but still redraw the plot
         # (to respond to scale modifications, grid change, etc.)
-        #
+        # -- This is now handled in draw_plot()
         #if not self.paused:
         #    self.data.append(self.datagen.next())
-        r = self.datagen.next()
-        self.plot_value('random', r)
-        k = self.datagen.next()
-        self.plot_value('random2', k+3)
         for cb in self.timer_callbacks:
             cb()
         self.draw_plot()
         
     def on_exit(self, event):
-        
+        # save data in a separate directory for each run
+        savedir = datetime.now().strftime("data/%Y-%m-%d_%H-%M-%S")
+        print "Saving data to", savedir
+        if not os.path.exists(savedir):
+            os.makedirs(savedir)
+        for key, val in self.data.items():
+            np.savetxt(os.path.join(savedir, key+'.csv'), np.array(val), delimiter=',\t')
         self.Destroy()
     
     def flash_status_message(self, msg, flash_len_ms=1500):
@@ -350,14 +356,26 @@ class GraphFrame(wx.Frame):
 
     def register_callback(self, cb):
         self.timer_callbacks.append(cb)
-    
+
+class RandomPlotter(object):
+    num_randoms = 0
+    def __init__(self, frame):
+        self.frame = frame
+        self.datagen = DataGen()
+        RandomPlotter.num_randoms = RandomPlotter.num_randoms + 1
+        self.key = "Random{0}".format(RandomPlotter.num_randoms)
+        frame.register_callback(self.append_random)
+        
+    def append_random(self):
+        self.frame.plot_value(self.key, self.datagen.next())
+        
 class SerialPlotter(object):
     def __init__(self, frame, port=6, baud=38400):
         self.frame = frame
-        self.ser = serial.Serial(port, baud, timeout=1)
+        #self.ser = serial.Serial(port, baud, timeout=1)
         TIMER_ID = 123
         self.timer = wx.Timer(frame, TIMER_ID)
-        self.timer.Start(10)
+        self.timer.Start(1)
         wx.EVT_TIMER(frame, TIMER_ID, self.time)
 
     def time(self, event):
@@ -383,7 +401,8 @@ class SerialPlotter(object):
 if __name__ == '__main__':
     app = wx.PySimpleApp()
     app.frame = GraphFrame()
-    sp = SerialPlotter(app.frame, 6, 38400)
+    #sp = SerialPlotter(app.frame, 6, 38400)
+    rp = RandomPlotter(app.frame)
     app.frame.Show()
     app.MainLoop()
-    sp.close_port()
+    #sp.close_port()
