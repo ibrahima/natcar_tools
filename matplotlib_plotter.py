@@ -220,15 +220,22 @@ class GraphFrame(wx.Frame):
         self.plots = {}
         self.data = {}
         
-    def plot_value(self, key, value, r=255.0, g=255.0, b=0.0):
+    def plot_value(self, key, value, r=-1, g=-1, b=-1):
+        """
+        Adds a value to the plot with th specified key. Color is only used if
+        the line didn't exist before.
+        """
         if not self.data.has_key(key):
             self.data[key] = [value]
+            r = random.uniform(0,255) if r == -1 else r
+            g = random.uniform(0,255) if g == -1 else g
+            b = random.uniform(0,255) if b == -1 else b
             self.plots[key] = (self.axes.plot(
-            self.data[key], 
-            linewidth=1,
-            color=(r/255.0, g/255.0, b/255.0),
-            label=str(key))[0])
-            self.axes.legend()
+              self.data[key], 
+              linewidth=1,
+              color=(r/255.0, g/255.0, b/255.0),
+              label=str(key))[0])
+            self.axes.legend(loc=2, prop={'size':8})
         else:
           self.data[key].append(value)
         
@@ -364,7 +371,7 @@ class RandomPlotter(object):
         self.frame = frame
         self.datagen = DataGen()
         RandomPlotter.num_randoms = RandomPlotter.num_randoms + 1
-        self.key = "Random{0}".format(RandomPlotter.num_randoms)
+        self.key = "Rand{0}".format(RandomPlotter.num_randoms)
         frame.register_callback(self.append_random)
         
     def append_random(self):
