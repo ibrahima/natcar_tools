@@ -227,7 +227,7 @@ class GraphFrame(wx.Frame):
             linewidth=1,
             color=(r/255.0, g/255.0, b/255.0),
             label=str(key))[0])
-            legend()
+            self.axes.legend()
         else:
           self.data[key].append(value)
         
@@ -289,8 +289,8 @@ class GraphFrame(wx.Frame):
         if not self.paused: # Don't update graph if paused.
           for key in self.data.keys():
               self.plots[key].set_xdata(np.arange(len(self.data[key])))
-              self.plots[key].set_ydata(np.array(self.data[key]))            
-        legend()
+              self.plots[key].set_ydata(np.array(self.data[key]))
+        
         self.canvas.draw()
     
     def on_pause_button(self, event):
