@@ -402,6 +402,7 @@ class SerialPlotter(object):
 def parse_args():
     parser = argparse.ArgumentParser(description='Plot values taken from serial input.')
     parser.add_argument('-t', '--test', action='store_true')
+    parser.add_argument('-n', '--numtests', type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -410,7 +411,8 @@ if __name__ == '__main__':
     app = wx.PySimpleApp()
     app.frame = GraphFrame()
     if args.test:
-        rp = RandomPlotter(app.frame)
+        for x in xrange(args.numtests):
+            rp = RandomPlotter(app.frame)
     else:
         sp = SerialPlotter(app.frame, 6, 38400)
     
