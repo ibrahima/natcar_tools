@@ -263,7 +263,7 @@ class GraphFrame(wx.Frame):
         # minimal/maximal value in the current display, and not
         # the whole data set.
         # 
-        ydata =[x.get_ydata() for x in self.plots.values()]
+        ydata =[x.get_ydata()[-50:] for x in self.plots.values()]
         if self.ymin_control.is_auto():
             ymin = round(min((map(min, ydata))), 0) - 1
         else:
