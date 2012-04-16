@@ -227,9 +227,9 @@ class GraphFrame(wx.Frame):
         """
         if not self.data.has_key(key):
             self.data[key] = [value]
-            r = random.uniform(0,255) if r == -1 else r
-            g = random.uniform(0,255) if g == -1 else g
-            b = random.uniform(0,255) if b == -1 else b
+            r = random.uniform(50,255) if r == -1 else r
+            g = random.uniform(50,255) if g == -1 else g
+            b = random.uniform(50,255) if b == -1 else b
             self.plots[key] = (self.axes.plot(
               self.data[key], 
               linewidth=1,
