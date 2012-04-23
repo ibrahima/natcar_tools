@@ -16,8 +16,8 @@ Note: press Enter in the 'manual' text box to make a new value
 affect the plot.
 
 Eli Bendersky (eliben@gmail.com)
+With modifications by Ibrahim Awwal (ibrahima on github)
 License: this code is in the public domain
-Last modified: 31.07.2008
 """
 import os
 import pprint
@@ -407,9 +407,19 @@ class SerialPlotter(object):
       self.parse_line(s)
       
 def parse_args():
-    parser = argparse.ArgumentParser(description='Plot values taken from serial input.')
-    parser.add_argument('-t', '--test', action='store_true')
-    parser.add_argument('-n', '--numtests', type=int, default=1)
+    parser = argparse.ArgumentParser(description="""Plots values taken from serial input.
+    Lines should be formatted like 'KEY1:%d,KEY2:%d' where KEY is the name of
+    the data series.
+    Saves data to CSV files in the data/ directory in a directory named by
+    the time that you close the program, on exit.""")
+    parser.add_argument('-t', '--test', action='store_true',
+                        help='Test with random data instead of serial')
+    parser.add_argument('-n', '--numtests', type=int, default=1,
+                        help='Number of random test inputs')
+    parser.add_argument('-p', '--port', type=int, default=7,
+                        help='COM port number to use')
+    parser.add_argument('-b', '--baud', type=int, default=115200,
+                        help='baud rate')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -421,7 +431,7 @@ if __name__ == '__main__':
         for x in xrange(args.numtests):
             rp = RandomPlotter(app.frame)
     else:
-        sp = SerialPlotter(app.frame, 6, 38400)
+        sp = SerialPlotter(app.frame, args.port - 1, args.baud)
     
     app.frame.Show()
     app.MainLoop()
