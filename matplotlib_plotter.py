@@ -387,7 +387,8 @@ class SerialPlotter(object):
         wx.EVT_TIMER(frame, TIMER_ID, self.time)
 
     def time(self, event):
-        self.read_line()
+        while self.ser.inWaiting() > 0: # Get everything in input buffer
+            self.read_line()
     
     def parse_line(self, s):
         l = [tuple(entry.split(":")) for entry in s.split(",")]
